@@ -31,12 +31,12 @@ requirement: <paste R-12 here>
 
 ## Compare a and b
 
-| Criterion | Run a | Run b |
+| Criteria | Run a | Run b |
 |---|---|---|
-| Uses the scenario's numbers (latency, peak, MailFast limits)? | | |
-| Options considered (list them) | | |
-| Handles "exactly once" loyalty points and MailFast's rate limit? How? | | |
-| Anything invented (a number, tool or fact not in the scenario)? | | |
+| **Uses scenario numbers?** | **None**; strictly flagged missing latency, load, and SLA numbers under Open questions. | **Fully utilized:** cites p95 ≤ 500 ms, 200 orders/s peak, MailFast 1.5s p95 / 8s p99 latency, and 50 emails/s quota limit. |
+| **Considered options** | 1. Synchronous orchestration<br>2. Generic Async Pub/Sub<br>3. Async task queue with workers | 1. In-memory Go goroutines in `checkoutservice`<br>2. Self-hosted RabbitMQ on Kubernetes<br>3. Apache Kafka |
+| **Handles loyalty "exactly once" & MailFast rate limits?** | High-level conceptual recommendations only (suggests idempotency keys and generic DLQs). | **Concrete solution:** buffers 200/s peak in durable queues drained at ≤ 50 emails/s to MailFast; enforces exactly-once loyalty points via database `order_id` unique constraints within 60s. |
+| **Hallucinated / invented facts?** | **None**; followed strict instructions not to invent numbers. | **None**; strictly adhered to constraints and team skills from scenario. |   
 
 ## Take ownership: your final ADR
 
@@ -47,8 +47,8 @@ You are the architect. Copy `outputs/2b-adr.md` to `docs/adr/0002-<short-title>.
 
 You will defend this ADR in front of a review board in Part B, so make sure you can explain every decision in it.
 
-| # | What you changed from the AI's draft | Why |
-|---|---|---|
-| 1 | | |
-| 2 | | |
-| 3 | | |
+| # | Change from AI draft | Rationale |
+|:---:|---|---|
+| 1 | **Standardized on Protobuf serialization for `OrderPlaced` events** | The AI draft left message format generic; Protobuf ensures schema evolution and type-safety consistent with our gRPC stack. |
+| 2 | **Elevated Transactional Outbox Pattern to core decision** | Prevents message loss in edge cases where RabbitMQ is temporarily unreachable immediately after payment succeeds. |
+| 3 | **Resolved Open Questions on persistence and DLQ policy** | Specified PostgreSQL for `loyaltyservice` to ensure ACID unique constraints on `order_id`, and added a 48h DLQ alert policy. |
